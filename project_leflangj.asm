@@ -11,6 +11,29 @@ INCLUDE Irvine32.inc
 
 ARRAYSIZE EQU 10
 
+;--------------------------------------
+getString MACRO prompt
+;
+;--------------------------------------
+	push	edx
+	mov		edx, OFFSET prompt
+	call	WriteString
+
+
+	call	CrLf
+	pop		edx
+
+ENDM
+
+;--------------------------------------
+displayString MACRO
+;
+;--------------------------------------
+
+
+
+ENDM
+
 .data
 
 user_input		DWORD	ARRAYSIZE DUP(?)
@@ -52,17 +75,20 @@ main PROC
 
 	call	CrLf
 
-	mov		edx, OFFSET program_prompt
-	call	WriteString
+	mov		ecx, LENGTHOF user_input
 
-	call	WriteVal
+Input:
+	getString program_prompt
+
+
+	loop	Input
 
 
 	mov		edx, OFFSET program_disp1
 	call	WriteString
 	call	CrLf
 
-	call	DisplayString
+	displayString
 
 	mov		edx, OFFSET program_disp2
 	call	WriteString
@@ -78,14 +104,6 @@ main PROC
 
 	exit	; exit to operating system
 main ENDP
-
-;--------------------------------------
-getString MACRO
-;
-;--------------------------------------
-
-
-ENDM
 
 ;--------------------------------------
 Instruct PROC
@@ -121,15 +139,6 @@ L1:	mov		edx, [esi]
 	pop		ebp
 	ret		16
 Instruct ENDP
-
-;--------------------------------------
-DisplayString PROC
-;
-;--------------------------------------
-
-
-	ret
-DisplayString ENDP
 
 ;--------------------------------------
 ReadVal PROC
