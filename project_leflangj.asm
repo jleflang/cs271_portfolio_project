@@ -12,15 +12,18 @@ INCLUDE Irvine32.inc
 ARRAYSIZE EQU 10
 
 ;--------------------------------------
-getString MACRO prompt
-;
+getString MACRO bufferaddr:REQ, buffertyp:REQ
+; Gets an input string to return the input in buffer.
+; Avoid passing arguments in edx, ecx.
 ;--------------------------------------
 	push	edx
-	mov		edx, OFFSET prompt
-	call	WriteString
+	push	ecx
 
+	mov		edx, bufferaddr
+	mov		ecx, buffertyp
+	call	ReadString
 
-	call	CrLf
+	pop		ecx
 	pop		edx
 
 ENDM
@@ -37,9 +40,11 @@ ENDM
 .data
 
 user_input		DWORD	ARRAYSIZE DUP(?)
+sum				DWORD	?
+input_buffer	BYTE	12 DUP(?)
 program_title	BYTE	\
 "PROGRAMMING ASSIGNMENT 6: Designing low-level I/O procedures", 13, 10, 0
-program_auth	BYTE	"Written byte: James Leflang", 13, 10, 0
+program_auth	BYTE	"Written by: James Leflang", 13, 10, 0
 program_instr1	BYTE	"Please provide 10 signed decimal integers.", 0
 program_instr2	BYTE	\
 "Each number needs to be small enough to fit inside a 32 bit register.", 0
@@ -75,28 +80,35 @@ main PROC
 
 	call	CrLf
 
-	mov		ecx, LENGTHOF user_input
-
-Input:
-	getString program_prompt
-
-
-	loop	Input
-
+	push	SIZEOF input_buffer
+	push	OFFSET input_buffer
+	push	OFFSET program_prompt
+	push	ARRAYSIZE
+	push	OFFSET user_input
+	call	ReadVal
 
 	mov		edx, OFFSET program_disp1
 	call	WriteString
 	call	CrLf
 
-	displayString
+	call	WriteVal
 
 	mov		edx, OFFSET program_disp2
 	call	WriteString
+
+	push	OFFSET user_input
+	push	sum
+	call	Sum
+
 	call	CrLf
 
 	mov		edx, OFFSET program_disp3
 	call	WriteString
-	call	CrLf
+
+	push	ARRAYSIZE
+	push	sum
+	call	Avg
+
 	call	CrLf
 
 	mov		edx, OFFSET program_goodbye
@@ -142,11 +154,66 @@ Instruct ENDP
 
 ;--------------------------------------
 ReadVal PROC
-;
+; Read and validate the user input using getString macro.
+; Preconditions: The input array address and length must be on the stack.
+; Postconditions:
+; Stack State:
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input @		ebp+8
+;	input len	ebp+12
+;	prompt		ebp+16
+;	buffer @	ebp+20
+;	buffer size	ebp+24
+; Registers changed:
+; Returns: None
 ;--------------------------------------
 
+	push	ebp
+	mov		ebp, esp
 
-	ret
+	mov		ecx, [ebp + 12]
+
+Input:
+
+	mov		edx, [ebp + 16]
+	call	WriteString
+
+	mov		esi, [ebp + 20]
+	mov		edi, [ebp + 8]
+	mov		edx, [ebp + 24]
+
+	getString esi, edx
+
+	xor		eax, eax
+
+	push	ecx
+	mov		ecx, [ebp + 28]
+	dec		ecx
+
+	cld
+	lodsb
+	
+
+	cmp		al, 48
+	jl		OutRange
+
+	cmp		al, 57
+	jg		OutRange
+
+	sub		al, 48
+	movzx	edx, al
+	mul		eax, 10
+	add		eax, edx
+	rep		movsb
+
+	pop		ecx
+
+	call	CrLf
+	loop	Input
+
+	pop		ebp
+	ret		20
 ReadVal ENDP
 
 ;--------------------------------------
@@ -154,6 +221,9 @@ WriteVal PROC
 ;
 ;--------------------------------------
 
+
+
+	displayString
 
 
 	ret
@@ -168,5 +238,15 @@ Sum PROC
 
 	ret
 Sum ENDP
+
+;--------------------------------------
+Avg PROC
+;
+;--------------------------------------
+
+
+
+	ret
+Avg ENDP
 
 END main
