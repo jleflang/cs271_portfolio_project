@@ -36,19 +36,23 @@ getString MACRO bufferaddr, buffertyp, bufsize, prompt
 ENDM
 
 ;--------------------------------------
-displayString MACRO
-;
+displayString MACRO outputVal
+; Takes a value and outputs it as a string to console.
+; Avoid passing arguements in edx
 ;--------------------------------------
+	push	edx
 
+	mov		edx, outputVal
+	call	WriteString
 
-
+	pop		edx
 ENDM
 
 .data
 
-user_input		DWORD	ARRAYSIZE DUP(?)
+user_input		DWORD	ARRAYSIZE DUP(0)
 sum_input		DWORD	?
-input_buffer	BYTE	12 DUP(?)
+buffer			BYTE	12 DUP(0)
 input_size		BYTE	?
 program_title	BYTE	\
 "PROGRAMMING ASSIGNMENT 6: Designing low-level I/O procedures", 13, 10, 0
@@ -88,9 +92,9 @@ main PROC
 
 	call	CrLf
 
-	push	SIZEOF input_buffer
+	push	SIZEOF buffer
 	push	OFFSET input_size
-	push	OFFSET input_buffer
+	push	OFFSET buffer
 	push	OFFSET program_inperr
 	push	OFFSET program_prompt
 	push	SIZEOF user_input
@@ -101,13 +105,17 @@ main PROC
 	call	WriteString
 	call	CrLf
 
+	push	OFFSET buffer
+	push	ARRAYSIZE
+	push	OFFSET user_input
 	call	WriteVal
 
 	mov		edx, OFFSET program_disp2
 	call	WriteString
 
+	push	OFFSET sum_input
+	push	ARRAYSIZE
 	push	OFFSET user_input
-	push	sum_input
 	call	Sum
 
 	call	CrLf
@@ -166,7 +174,7 @@ Instruct ENDP
 ReadVal PROC
 ; Read and validate the user input using getString macro.
 ; Preconditions: The input array address and length must be on the stack.
-; Postconditions:
+; Postconditions: Stack is clean and buffer+input_size are sanitized.
 ; Stack State:
 ;	old ebp		ebp
 ;	ret @		ebp+4
@@ -177,7 +185,7 @@ ReadVal PROC
 ;	buffer @	ebp+24
 ;	input_size	ebp+28
 ;	buffer size	ebp+32
-; Registers changed:
+; Registers changed: eax, ebx, ecx, esi, edi
 ; Returns: None
 ;--------------------------------------
 
@@ -203,7 +211,7 @@ Input:
 	mov		bl, 1
 
 	; Prepare the loop
-	std
+	cld
 	mov		ecx, [ebp + 28]
 
 L1:			; LOOP: For each char in the string
@@ -218,12 +226,16 @@ L1:			; LOOP: For each char in the string
 	cmp		al, 45
 	jne		Cont
 
+	; if there is a plus sign, still valid but need go to next
+	cmp		al, 43
+	je		Next
+
 	; Two's compliment
 	mov		eax, [edi]
 	xor		eax, 0
 	add		eax, 1
 
-	; Store the value and we are ready for the next input
+Next:		; Store the value and we are ready for the next input
 	mov		[edi], eax
 	add		edi, 4
 	jmp		Input
@@ -238,7 +250,9 @@ Cont:		; Check to make sure the input is an integer value
 	; Store it
 	sub		al, 48
 	mul		bl
-	stosb
+	mov		edx, [edi]
+	add		edx, eax
+	mov		[edi], edx
 
 	; 10 times the current multiplier
 	mov		ah, al
@@ -263,31 +277,92 @@ Inval:		; Invalid input
 	jmp		Input
 
 Finish:
+	; Sanitize the buffer and input_size
+	mov		edi, [ebp + 24]
+	mov		ecx, [ebp + 32]
+
+L2:	mov		BYTE PTR [edi], 0
+	add		edi, 1
+
+	loop	L2
+
+	mov		esi, [ebp + 28]
+	mov		esi, 0
+
 	pop		ebp
 	ret		28
 ReadVal ENDP
 
 ;--------------------------------------
 WriteVal PROC
-;
+; Output the user input using the WriteVal macro.
+; Preconditions: The input array address and length must be on the stack.
+; Postconditions: Stack is clean
+; Stack State:
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input @		ebp+8
+;	input len	ebp+12
+;	buffer @	ebp+16
+; Registers changed: eax, ebx, ecx, esi, edi
+; Returns: None
 ;--------------------------------------
 
+	push	ebp
+	mov		ebp, esp
+
+	mov		ecx, [ebp + 12]
+	mov		esi, [ebp + 8]
+	mov		edi, [ebp + 16]
+
+L1:
+	mov		eax, [esi]
+
+	displayString edi
+
+	add		esi, 4
+	loop	L1
 
 
-	displayString
-
-
-	ret
+	ret		12
 WriteVal ENDP
 
 ;--------------------------------------
 Sum PROC
-;
+; Sum the numbers and display the sum.
+; Preconditions: The input array address and length must be on the stack.
+; Postconditions: Stack is clean
+; Stack State:
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input @		ebp+8
+;	input len	ebp+12
+;	sum @		ebp+16
+; Registers changed: eax, ebx, ecx, esi, edi
+; Returns: None
 ;--------------------------------------
 
+	push	ebp
+	mov		ebp, esp
 
+	xor		eax, eax
 
-	ret
+	mov		ecx, [ebp + 12]
+	mov		esi, [ebp + 8]
+	mov		edi, [ebp + 16]
+
+L1:
+	mov		ebx, [esi]
+	add		eax, ebx
+
+	loop	L1
+
+	mov		[edi], eax
+
+	;displayString edi
+
+	pop		ebp
+	ret		12
 Sum ENDP
 
 ;--------------------------------------
