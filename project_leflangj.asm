@@ -105,6 +105,7 @@ main PROC
 	call	WriteString
 	call	CrLf
 
+	push	LENGTHOF buffer
 	push	OFFSET buffer
 	push	ARRAYSIZE
 	push	OFFSET user_input
@@ -295,6 +296,7 @@ ReadVal ENDP
 
 ;--------------------------------------
 WriteVal PROC
+LOCAL	sign_flag:BYTE
 ; Output the user input using the WriteVal macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean
@@ -304,6 +306,7 @@ WriteVal PROC
 ;	input @		ebp+8
 ;	input len	ebp+12
 ;	buffer @	ebp+16
+;	buffer len	ebp+20
 ; Registers changed: eax, ebx, ecx, esi, edi
 ; Returns: None
 ;--------------------------------------
@@ -314,9 +317,54 @@ WriteVal PROC
 	mov		ecx, [ebp + 12]
 	mov		esi, [ebp + 8]
 	mov		edi, [ebp + 16]
+	add		edi, [ebp + 20]
+	sub		edi, 1
 
 L1:
-	mov		eax, [esi]
+	xor		eax, eax
+	mov		sign_flag, 0
+	mov		ebx, [esi]
+
+	test	ebx, 0
+	jns		isPos
+
+	xor		ebx, ebx
+	add		ebx, 1
+
+	mov		sign_flag, 1
+
+isPos:
+	mov		eax, ebx
+	mov		ebx, 10
+	cdq
+
+	div		ebx
+	add		dl, 48
+
+	mov		BYTE PTR [edi], dl
+	add		edi, 1
+
+	cmp		eax, 0
+	jz		AddNegSign
+
+	push	eax
+	mov		eax, ebx
+	mov		ebx, 10
+	mul		ebx
+	mov		ebx, eax
+	pop		eax
+
+	cmp		edi, [ebp + 16]
+	jg		isPos
+
+AddNegSign:
+	cmp		sign_flag, 1
+	jnz		Write
+
+	mov		BYTE PTR [edi], 45
+
+Write:
+	mov		edi, [ebp + 16]
 
 	displayString edi
 
