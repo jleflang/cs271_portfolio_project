@@ -54,8 +54,7 @@ ENDM
 
 user_input		DWORD	ARRAYSIZE DUP(0)
 sum_input		DWORD	?
-buffer			BYTE	12 DUP(0)
-padding			BYTE	2 DUP(0)
+buffer			BYTE	64 DUP(0)
 input_size		BYTE	?
 program_title	BYTE	\
 "PROGRAMMING ASSIGNMENT 6: Designing low-level I/O procedures", 13, 10, 0
@@ -229,6 +228,9 @@ Input:
 	cmp		ecx, 0
 	jz		L1
 
+	cmp		ecx, 11
+	jg		Inval
+
 	mov		ebx, 10
 
 Mut:
@@ -256,10 +258,11 @@ L1:			; LOOP: For each char in the string
 	cmp		al, 45
 	jne		Cont
 
-	; Two's compliment
+	; Two's Complement
 	mov		eax, [edi]
 	xor		eax, 0
 	add		eax, 1
+	jmp		L1
 
 Cont:		; Check to make sure the input is an integer value
 	cmp		al, 48
