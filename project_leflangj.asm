@@ -5,7 +5,9 @@ TITLE Portfolio Project     (program6_leflangj.asm)
 ; OSU email address: leflangj@oregonstate.edu
 ; Course number/section: CS-271-400
 ; Project Number: 6               Due Date: 06/07/2020
-; Description:
+; Description: This program takes the 10 signed integers as input from the user
+;	and manually translates the ASCII to integers and outputs the integers' sum
+;	and average as ASCII.
 
 INCLUDE Irvine32.inc
 
@@ -53,6 +55,7 @@ ENDM
 user_input		DWORD	ARRAYSIZE DUP(0)
 sum_input		DWORD	?
 buffer			BYTE	12 DUP(0)
+padding			BYTE	2 DUP(0)
 input_size		BYTE	?
 program_title	BYTE	\
 "PROGRAMMING ASSIGNMENT 6: Designing low-level I/O procedures", 13, 10, 0
@@ -71,6 +74,7 @@ program_disp1	BYTE	"You entered the following numbers:", 13, 10, 0
 program_disp2	BYTE	"The sum of these numbers is: ", 0
 program_disp3	BYTE	"The rounded average is: ", 0
 program_goodbye	BYTE	"Thanks for playing!", 13, 10, 0
+program_space	BYTE	"  ", 0
 
 
 .code
@@ -92,7 +96,7 @@ main PROC
 
 	call	CrLf
 
-	push	SIZEOF buffer
+	push	LENGTHOF buffer
 	push	OFFSET input_size
 	push	OFFSET buffer
 	push	OFFSET program_inperr
@@ -101,19 +105,24 @@ main PROC
 	push	OFFSET user_input
 	call	ReadVal
 
-	mov		edx, OFFSET program_disp1
-	call	WriteString
 	call	CrLf
 
-	push	LENGTHOF buffer
+	mov		edx, OFFSET program_disp1
+	call	WriteString
+
+	push	OFFSET program_space
 	push	OFFSET buffer
 	push	ARRAYSIZE
 	push	OFFSET user_input
 	call	WriteVal
 
+	call	CrLf
+	call	CrLf
+
 	mov		edx, OFFSET program_disp2
 	call	WriteString
 
+	push	OFFSET buffer
 	push	OFFSET sum_input
 	push	ARRAYSIZE
 	push	OFFSET user_input
@@ -124,8 +133,9 @@ main PROC
 	mov		edx, OFFSET program_disp3
 	call	WriteString
 
-	push	ARRAYSIZE
+	push	OFFSET buffer
 	push	sum_input
+	push	ARRAYSIZE
 	call	Avg
 
 	call	CrLf
@@ -185,7 +195,7 @@ ReadVal PROC
 ;	error		ebp+20
 ;	buffer @	ebp+24
 ;	input_size	ebp+28
-;	buffer size	ebp+32
+;	buffer len	ebp+32
 ; Registers changed: eax, ebx, ecx, esi, edi
 ; Returns: None
 ;--------------------------------------
@@ -193,7 +203,7 @@ ReadVal PROC
 	push	ebp
 	mov		ebp, esp
 
-	mov		esi, [ebp + 20]
+	mov		esi, [ebp + 24]
 	mov		edi, [ebp + 8]
 
 Input:
@@ -201,7 +211,7 @@ Input:
 	mov		eax, [ebp + 12]
 	add		eax, [ebp + 8]
 	cmp		edi, eax
-	jg		Finish
+	jge		Finish
 
 	; Get the user input
 	getString esi, [ebp + 32], [ebp + 28], [ebp + 16]
@@ -209,37 +219,47 @@ Input:
 	; Setup to process the input
 	xor		eax, eax
 	xor		ebx, ebx
-	mov		bl, 1
+	mov		ax, 1
 
 	; Prepare the loop
 	cld
+	mov		ebx, 1
 	mov		ecx, [ebp + 28]
+	sub		ecx, 1
+	cmp		ecx, 0
+	jz		L1
+
+	mov		ebx, 10
+
+Mut:
+	mul		ebx
+	loop	Mut
+
+	mov		ebx, eax
+	mov		ecx, [ebp + 28]
+
+	xor		eax, eax
 
 L1:			; LOOP: For each char in the string
 	; load the last value
 	lodsb
 
-	; Skip the null
+	; End at the null
 	cmp		al, 0
-	je		L1
-
-	; Check for a negative sign
-	cmp		al, 45
-	jne		Cont
+	je		Next
 
 	; if there is a plus sign, still valid but need go to next
 	cmp		al, 43
-	je		Next
+	je		L1
+	
+	; Check for a negative sign
+	cmp		al, 45
+	jne		Cont
 
 	; Two's compliment
 	mov		eax, [edi]
 	xor		eax, 0
 	add		eax, 1
-
-Next:		; Store the value and we are ready for the next input
-	mov		[edi], eax
-	add		edi, 4
-	jmp		Input
 
 Cont:		; Check to make sure the input is an integer value
 	cmp		al, 48
@@ -250,23 +270,27 @@ Cont:		; Check to make sure the input is an integer value
 
 	; Store it
 	sub		al, 48
-	mul		bl
+	mul		ebx
 	mov		edx, [edi]
-	add		edx, eax
-	mov		[edi], edx
+	add		eax, edx
+	mov		[edi], eax
 
-	; 10 times the current multiplier
-	mov		ah, al
-	mov		al, bl
-	mov		bl, 10
-	mul		bl
-	mov		bl, al
-	mov		al, ah
+	xor		edx, edx
+
+	; Divide by 10
+	mov		eax, ebx
+	mov		ebx, 10
+	cdq
+	div		ebx
+	mov		ebx, eax
+
+	xor		eax, eax
 
 	; loop until the current input is transfered
 	loop	L1
 
-	; Go to the next number in the array
+Next:		; Go to the next number in the array
+	mov		esi, [ebp + 24]
 	add		edi, 4
 	jmp		Input
 
@@ -296,102 +320,117 @@ ReadVal ENDP
 
 ;--------------------------------------
 WriteVal PROC
-LOCAL	sign_flag:BYTE
+LOCAL	curVal:DWORD
 ; Output the user input using the WriteVal macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean
 ; Stack State:
+;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	input @		ebp+8
 ;	input len	ebp+12
 ;	buffer @	ebp+16
-;	buffer len	ebp+20
-; Registers changed: eax, ebx, ecx, esi, edi
+;	space		ebp+20
+; Registers changed: eax, ebx, ecx, edx, esi, edi
 ; Returns: None
 ;--------------------------------------
 
-	push	ebp
-	mov		ebp, esp
-
+	; Setup
 	mov		ecx, [ebp + 12]
 	mov		esi, [ebp + 8]
 	mov		edi, [ebp + 16]
-	add		edi, [ebp + 20]
-	sub		edi, 1
+	mov		curVal, 0
 
-L1:
-	xor		eax, eax
-	mov		sign_flag, 0
-	mov		ebx, [esi]
+	cld
+	
+L1:			; LOOP: for all numbers in the array
+	mov		eax, [esi]
+	mov		curVal, eax
 
-	test	ebx, 0
+	; Check if negative
+	test	eax, 0
 	jns		isPos
 
-	xor		ebx, ebx
-	add		ebx, 1
+	; Two's Complement
+	xor		eax, eax
+	add		eax, 1
 
-	mov		sign_flag, 1
+	; Add a minus sign
+	mov		ebx, eax
+	xor		eax, eax
+	mov		al, 45
+	stosb
 
-isPos:
 	mov		eax, ebx
+	mov		curVal, eax
+
+isPos:		; Just a positive number
+	; Setup
 	mov		ebx, 10
+
+L2:			; Divide by 10
 	cdq
-
 	div		ebx
-	add		dl, 48
+	cmp		eax, 10
+	jl		Accum
 
-	mov		BYTE PTR [edi], dl
-	add		edi, 1
-
-	cmp		eax, 0
-	jz		AddNegSign
-
-	push	eax
+	; If the quotient is larger than 10,
+	;	then go in multiples of 10 until less than 10
 	mov		eax, ebx
 	mov		ebx, 10
 	mul		ebx
 	mov		ebx, eax
-	pop		eax
+	mov		eax, curVal
+	jmp		L2
 
-	cmp		edi, [ebp + 16]
-	jg		isPos
+Accum:		; Store the ASCII value
+	add		al, 48
+	stosb
 
-AddNegSign:
-	cmp		sign_flag, 1
-	jnz		Write
+	; move the remainder
+	mov		eax, edx
+	mov		curVal, eax
 
-	mov		BYTE PTR [edi], 45
+	; If it is more than 10 then we continue
+	cmp		eax, 10
+	jge		isPos
 
-Write:
+	; Only the one's place is left
+	add		al, 48
+	stosb
+
+	; Write the value out
 	mov		edi, [ebp + 16]
-
 	displayString edi
 
+	mov		edx, [ebp + 20]
+	call	WriteString
+
+	; Got to the next value in the array
 	add		esi, 4
 	loop	L1
 
-
-	ret		12
+	ret		16
 WriteVal ENDP
 
 ;--------------------------------------
 Sum PROC
+LOCAL	curVal:DWORD
 ; Sum the numbers and display the sum.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean
 ; Stack State:
+;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	input @		ebp+8
 ;	input len	ebp+12
 ;	sum @		ebp+16
-; Registers changed: eax, ebx, ecx, esi, edi
+;	buffer @	ebp+20
+; Registers changed: eax, ebx, ecx, edx, esi, edi
 ; Returns: None
 ;--------------------------------------
-
-	push	ebp
-	mov		ebp, esp
 
 	xor		eax, eax
 
@@ -399,28 +438,170 @@ Sum PROC
 	mov		esi, [ebp + 8]
 	mov		edi, [ebp + 16]
 
-L1:
+L1:			; Sum all the numbers
 	mov		ebx, [esi]
 	add		eax, ebx
-
+	add		esi, 4
 	loop	L1
 
+	; Prepare to display
+	mov		curVal, eax
 	mov		[edi], eax
+	mov		esi, edi
+	mov		edi, [ebp + 20]
 
-	;displayString edi
+	cld
 
-	pop		ebp
-	ret		12
+	; Check if negative
+	test	eax, 0
+	jns		isPos
+
+	; Two's Complement
+	xor		eax, eax
+	add		eax, 1
+
+	; Add a minus sign
+	mov		ebx, eax
+	xor		eax, eax
+	mov		al, 45
+	stosb
+
+	mov		eax, ebx
+	mov		curVal, eax
+
+isPos:		; Just a positive number
+	; Setup
+	mov		ebx, 10
+
+L2:			; Divide by 10
+	cdq
+	div		ebx
+	cmp		eax, 10
+	jl		Accum
+
+	; If the quotient is larger than 10,
+	;	then go in multiples of 10 until less than 10
+	mov		eax, ebx
+	mov		ebx, 10
+	mul		ebx
+	mov		ebx, eax
+	mov		eax, curVal
+	jmp		L2
+
+Accum:		; Store the ASCII value
+	add		al, 48
+	stosb
+
+	; move the remainder
+	mov		eax, edx
+	mov		curVal, eax
+
+	; If it is more than 10 then we continue
+	cmp		eax, 10
+	jge		isPos
+
+	; Only the one's place is left
+	add		al, 48
+	stosb
+
+	; Write the value out
+	mov		edi, [ebp + 20]
+
+	displayString edi
+
+	ret		16
 Sum ENDP
 
 ;--------------------------------------
 Avg PROC
-;
+LOCAL	curVal:DWORD
+; Display the sum.
+; Preconditions: The sum and the array length must be on the stack.
+; Postconditions: Stack is clean
+; Stack State:
+;	curVal		ebp-4
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input len	ebp+8
+;	sum			ebp+12
+;	buffer @	ebp+16
+; Registers changed: eax, ebx, ecx, edx, esi, edi
+; Returns: None
 ;--------------------------------------
 
+	xor		eax, eax
+	; Grab the sum and the array length and divide
+	mov		ebx, [ebp + 8]
+	mov		eax, [ebp + 12]
 
+	cdq
+	div		ebx
 
-	ret
+	; Prepare the print out
+	cld
+	mov		edi, [ebp + 16]
+	xor		ebx, ebx
+
+	mov		curVal, eax
+
+	; Check if negative
+	test	eax, 0
+	jns		isPos
+
+	; Two's Complement
+	xor		eax, eax
+	add		eax, 1
+
+	; Add a minus sign
+	mov		ebx, eax
+	xor		eax, eax
+	mov		al, 45
+	stosb
+
+	mov		eax, ebx
+	mov		curVal, eax
+
+isPos:		; Just a positive number
+	; Setup
+	mov		ebx, 10
+
+L2:			; Divide by 10
+	cdq
+	div		ebx
+	cmp		eax, 10
+	jl		Accum
+
+	; If the quotient is larger than 10,
+	;	then go in multiples of 10 until less than 10
+	mov		eax, ebx
+	mov		ebx, 10
+	mul		ebx
+	mov		ebx, eax
+	mov		eax, curVal
+	jmp		L2
+
+Accum:		; Store the ASCII value
+	add		al, 48
+	stosb
+
+	; move the remainder
+	mov		eax, edx
+	mov		curVal, eax
+
+	; If it is more than 10 then we continue
+	cmp		eax, 10
+	jge		isPos
+
+	; Only the one's place is left
+	add		al, 48
+	stosb
+
+	; Write the value out
+	mov		edi, [ebp + 16]
+
+	displayString edi
+
+	ret		12
 Avg ENDP
 
 END main
