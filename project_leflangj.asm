@@ -368,6 +368,8 @@ L1:			; LOOP: for all numbers in the array
 isPos:		; Just a positive number
 	; Setup
 	mov		ebx, 10
+	cmp		eax, 10
+	jle		OneDigit
 
 L2:			; Divide by 10
 	cdq
@@ -397,6 +399,7 @@ Accum:		; Store the ASCII value
 	jge		isPos
 
 	; Only the one's place is left
+OneDigit:
 	add		al, 48
 	stosb
 
@@ -472,6 +475,8 @@ L1:			; Sum all the numbers
 isPos:		; Just a positive number
 	; Setup
 	mov		ebx, 10
+	cmp		eax, 10
+	jle		OneDigit
 
 L2:			; Divide by 10
 	cdq
@@ -501,6 +506,7 @@ Accum:		; Store the ASCII value
 	jge		isPos
 
 	; Only the one's place is left
+OneDigit:
 	add		al, 48
 	stosb
 
@@ -564,6 +570,8 @@ LOCAL	curVal:DWORD
 isPos:		; Just a positive number
 	; Setup
 	mov		ebx, 10
+	cmp		eax, 10
+	jle		OneDigit
 
 L2:			; Divide by 10
 	cdq
@@ -593,11 +601,12 @@ Accum:		; Store the ASCII value
 	jge		isPos
 
 	; Only the one's place is left
+OneDigit:
 	add		al, 48
 	stosb
 
 	; Write the value out
-	mov		edi, [ebp + 16]
+	mov		[edi], eax
 
 	displayString edi
 
