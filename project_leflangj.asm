@@ -336,9 +336,91 @@ L2:	mov		BYTE PTR [edi], 0
 ReadVal ENDP
 
 ;--------------------------------------
+ConvertIntToStr PROC
+LOCAL	curVal:DWORD
+; Subprocedure to convert signed integers to strings.
+; Preconditions: The buffer addr and the integer is on the stack.
+; Postconditions: The string is in the buffer.
+; Stack State:
+;	curVal		ebp-4
+;	old epb		ebp
+;	ret @		ebp+4
+;	int			ebp+8
+;	buffer @	ebp+12
+;	caller stk	ebp+16...
+; Registers changed:
+; Returns: Converted string in the buffer.
+;--------------------------------------
+
+	; Prepare to display
+	mov		eax, [ebp + 8]
+	mov		curVal, eax
+	mov		edi, [ebp + 12]
+
+	cld
+
+	; Check if negative
+	test	eax, 0
+	jns		isPos
+
+	; Two's Complement
+	xor		eax, eax
+	add		eax, 1
+
+	; Add a minus sign
+	mov		ebx, eax
+	xor		eax, eax
+	mov		al, 45
+	stosb
+
+	mov		eax, ebx
+	mov		curVal, eax
+
+isPos:		; Just a positive number
+	; Setup
+	mov		ebx, 10
+	cmp		eax, 10
+	jle		OneDigit
+
+L2:			; Divide by 10
+	cdq
+	div		ebx
+	cmp		eax, 10
+	jl		Accum
+
+	; If the quotient is larger than 10,
+	;	then go in multiples of 10 until less than 10
+	mov		eax, ebx
+	mov		ebx, 10
+	mul		ebx
+	mov		ebx, eax
+	mov		eax, curVal
+	jmp		L2
+
+Accum:		; Store the ASCII value
+	add		al, 48
+	stosb
+
+	; move the remainder
+	mov		eax, edx
+	mov		curVal, eax
+
+	; If it is more than 10 then we continue
+	cmp		eax, 10
+	jge		isPos
+
+	; Only the one's place is left
+OneDigit:
+	add		al, 48
+	stosb
+
+	ret		8
+ConvertIntToStr ENDP
+
+;--------------------------------------
 WriteVal PROC
 LOCAL	curVal:DWORD
-; Output the user input using the WriteVal macro.
+; Output the user input using the displayString macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean
 ; Stack State:
@@ -436,12 +518,10 @@ WriteVal ENDP
 
 ;--------------------------------------
 Sum PROC
-LOCAL	curVal:DWORD
 ; Sum the numbers and display the sum.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean
 ; Stack State:
-;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	input @		ebp+8
@@ -451,6 +531,9 @@ LOCAL	curVal:DWORD
 ; Registers changed: eax, ebx, ecx, edx, esi, edi
 ; Returns: None
 ;--------------------------------------
+
+	push	ebp
+	mov		ebp, esp
 
 	xor		eax, eax
 
@@ -464,85 +547,26 @@ L1:			; Sum all the numbers
 	add		esi, 4
 	loop	L1
 
-	; Prepare to display
-	mov		curVal, eax
 	mov		[edi], eax
-	mov		esi, edi
+
 	mov		edi, [ebp + 20]
 
-	cld
-
-	; Check if negative
-	test	eax, 0
-	jns		isPos
-
-	; Two's Complement
-	xor		eax, eax
-	add		eax, 1
-
-	; Add a minus sign
-	mov		ebx, eax
-	xor		eax, eax
-	mov		al, 45
-	stosb
-
-	mov		eax, ebx
-	mov		curVal, eax
-
-isPos:		; Just a positive number
-	; Setup
-	mov		ebx, 10
-	cmp		eax, 10
-	jle		OneDigit
-
-L2:			; Divide by 10
-	cdq
-	div		ebx
-	cmp		eax, 10
-	jl		Accum
-
-	; If the quotient is larger than 10,
-	;	then go in multiples of 10 until less than 10
-	mov		eax, ebx
-	mov		ebx, 10
-	mul		ebx
-	mov		ebx, eax
-	mov		eax, curVal
-	jmp		L2
-
-Accum:		; Store the ASCII value
-	add		al, 48
-	stosb
-
-	; move the remainder
-	mov		eax, edx
-	mov		curVal, eax
-
-	; If it is more than 10 then we continue
-	cmp		eax, 10
-	jge		isPos
-
-	; Only the one's place is left
-OneDigit:
-	add		al, 48
-	stosb
-
-	; Write the value out
-	mov		edi, [ebp + 20]
+	push	edi
+	push	eax
+	call	ConvertIntToStr
 
 	displayString edi
 
+	pop		ebp
 	ret		16
 Sum ENDP
 
 ;--------------------------------------
 Avg PROC
-LOCAL	curVal:DWORD
 ; Display the sum.
 ; Preconditions: The sum and the array length must be on the stack.
 ; Postconditions: Stack is clean
 ; Stack State:
-;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	input len	ebp+8
@@ -552,7 +576,10 @@ LOCAL	curVal:DWORD
 ; Returns: None
 ;--------------------------------------
 
+	push	ebp
+	mov		ebp, esp
 	xor		eax, eax
+
 	; Grab the sum and the array length and divide
 	mov		ebx, [ebp + 8]
 	mov		eax, [ebp + 12]
@@ -560,73 +587,15 @@ LOCAL	curVal:DWORD
 	cdq
 	div		ebx
 
-	; Prepare the print out
-	cld
 	mov		edi, [ebp + 16]
-	xor		ebx, ebx
 
-	mov		curVal, eax
-
-	; Check if negative
-	test	eax, 0
-	jns		isPos
-
-	; Two's Complement
-	xor		eax, eax
-	add		eax, 1
-
-	; Add a minus sign
-	mov		ebx, eax
-	xor		eax, eax
-	mov		al, 45
-	stosb
-
-	mov		eax, ebx
-	mov		curVal, eax
-
-isPos:		; Just a positive number
-	; Setup
-	mov		ebx, 10
-	cmp		eax, 10
-	jle		OneDigit
-
-L2:			; Divide by 10
-	cdq
-	div		ebx
-	cmp		eax, 10
-	jl		Accum
-
-	; If the quotient is larger than 10,
-	;	then go in multiples of 10 until less than 10
-	mov		eax, ebx
-	mov		ebx, 10
-	mul		ebx
-	mov		ebx, eax
-	mov		eax, curVal
-	jmp		L2
-
-Accum:		; Store the ASCII value
-	add		al, 48
-	stosb
-
-	; move the remainder
-	mov		eax, edx
-	mov		curVal, eax
-
-	; If it is more than 10 then we continue
-	cmp		eax, 10
-	jge		isPos
-
-	; Only the one's place is left
-OneDigit:
-	add		al, 48
-	stosb
-
-	; Write the value out
-	mov		[edi], eax
+	push	edi
+	push	eax
+	call	ConvertIntToStr
 
 	displayString edi
 
+	pop		ebp
 	ret		12
 Avg ENDP
 

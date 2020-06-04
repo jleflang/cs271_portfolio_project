@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 13:56:43
 -Portfolio Project     (program6_leflangj.asm		     Page 1 - 1
 
 
@@ -243,7 +243,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
  0000006D  68 0000002C R		push	OFFSET buffer
  00000072  6A 0A			push	ARRAYSIZE
  00000074  68 00000000 R		push	OFFSET user_input
- 00000079  E8 00000176			call	WriteVal
+ 00000079  E8 000001D4			call	WriteVal
 
  0000007E  E8 00000000 E		call	CrLf
  00000083  E8 00000000 E		call	CrLf
@@ -255,7 +255,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
  00000097  68 00000028 R		push	OFFSET sum_input
  0000009C  6A 0A			push	ARRAYSIZE
  0000009E  68 00000000 R		push	OFFSET user_input
- 000000A3  E8 000001CF			call	Sum
+ 000000A3  E8 0000022D			call	Sum
 
  000000A8  E8 00000000 E		call	CrLf
 
@@ -265,7 +265,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
  000000B7  68 0000002C R		push	OFFSET buffer
  000000BC  FF 35 00000028 R		push	sum_input
  000000C2  6A 0A			push	ARRAYSIZE
- 000000C4  E8 0000022D			call	Avg
+ 000000C4  E8 0000023C			call	Avg
 
  000000C9  E8 00000000 E		call	CrLf
 
@@ -484,9 +484,95 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
  000001F4			ReadVal ENDP
 
 				;--------------------------------------
- 000001F4			WriteVal PROC
+ 000001F4			ConvertIntToStr PROC
 				LOCAL	curVal:DWORD
-				; Output the user input using the WriteVal macro.
+				; Subprocedure to convert signed integers to strings.
+				; Preconditions: The buffer addr and the integer is on the stack.
+				; Postconditions: The string is in the buffer.
+				; Stack State:
+				;	curVal		ebp-4
+				;	old epb		ebp
+				;	ret @		ebp+4
+				;	int			ebp+8
+				;	buffer @	ebp+12
+				;	caller stk	ebp+16...
+				; Registers changed:
+				; Returns: Converted string in the buffer.
+				;--------------------------------------
+
+					; Prepare to display
+ 000001F4  55		   *	    push   ebp
+ 000001F5  8B EC	   *	    mov    ebp, esp
+ 000001F7  83 C4 FC	   *	    add    esp, 0FFFFFFFCh
+ 000001FA  8B 45 08			mov		eax, [ebp + 8]
+ 000001FD  89 45 FC			mov		curVal, eax
+ 00000200  8B 7D 0C			mov		edi, [ebp + 12]
+
+ 00000203  FC				cld
+
+					; Check if negative
+ 00000204  A9 00000000			test	eax, 0
+ 00000209  79 11			jns		isPos
+
+					; Two's Complement
+ 0000020B  33 C0			xor		eax, eax
+ 0000020D  83 C0 01			add		eax, 1
+
+					; Add a minus sign
+ 00000210  8B D8			mov		ebx, eax
+ 00000212  33 C0			xor		eax, eax
+ 00000214  B0 2D			mov		al, 45
+ 00000216  AA				stosb
+
+ 00000217  8B C3			mov		eax, ebx
+ 00000219  89 45 FC			mov		curVal, eax
+
+ 0000021C			isPos:		; Just a positive number
+					; Setup
+ 0000021C  BB 0000000A			mov		ebx, 10
+ 00000221  83 F8 0A			cmp		eax, 10
+ 00000224  7E 25			jle		OneDigit
+
+ 00000226			L2:			; Divide by 10
+ 00000226  99				cdq
+ 00000227  F7 F3			div		ebx
+ 00000229  83 F8 0A			cmp		eax, 10
+ 0000022C  7C 10			jl		Accum
+
+					; If the quotient is larger than 10,
+					;	then go in multiples of 10 until less than 10
+ 0000022E  8B C3			mov		eax, ebx
+ 00000230  BB 0000000A			mov		ebx, 10
+ 00000235  F7 E3			mul		ebx
+ 00000237  8B D8			mov		ebx, eax
+ 00000239  8B 45 FC			mov		eax, curVal
+ 0000023C  EB E8			jmp		L2
+
+ 0000023E			Accum:		; Store the ASCII value
+ 0000023E  04 30			add		al, 48
+ 00000240  AA				stosb
+
+					; move the remainder
+ 00000241  8B C2			mov		eax, edx
+ 00000243  89 45 FC			mov		curVal, eax
+
+					; If it is more than 10 then we continue
+ 00000246  83 F8 0A			cmp		eax, 10
+ 00000249  7D D1			jge		isPos
+
+					; Only the one's place is left
+ 0000024B			OneDigit:
+ 0000024B  04 30			add		al, 48
+ 0000024D  AA				stosb
+
+ 0000024E  C9		   *	    leave  
+ 0000024F  C2 0008			ret		8
+ 00000252			ConvertIntToStr ENDP
+
+				;--------------------------------------
+ 00000252			WriteVal PROC
+				LOCAL	curVal:DWORD
+				; Output the user input using the displayString macro.
 				; Preconditions: The input array address and length must be on the stack.
 				; Postconditions: Stack is clean
 				; Stack State:
@@ -502,103 +588,101 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
 				;--------------------------------------
 
 					; Setup
- 000001F4  55		   *	    push   ebp
- 000001F5  8B EC	   *	    mov    ebp, esp
- 000001F7  83 C4 FC	   *	    add    esp, 0FFFFFFFCh
- 000001FA  8B 4D 0C			mov		ecx, [ebp + 12]
- 000001FD  8B 75 08			mov		esi, [ebp + 8]
- 00000200  8B 7D 10			mov		edi, [ebp + 16]
- 00000203  C7 45 FC			mov		curVal, 0
+ 00000252  55		   *	    push   ebp
+ 00000253  8B EC	   *	    mov    ebp, esp
+ 00000255  83 C4 FC	   *	    add    esp, 0FFFFFFFCh
+ 00000258  8B 4D 0C			mov		ecx, [ebp + 12]
+ 0000025B  8B 75 08			mov		esi, [ebp + 8]
+ 0000025E  8B 7D 10			mov		edi, [ebp + 16]
+ 00000261  C7 45 FC			mov		curVal, 0
 	   00000000
 
- 0000020A  FC				cld
+ 00000268  FC				cld
 					
- 0000020B			L1:			; LOOP: for all numbers in the array
- 0000020B  8B 06			mov		eax, [esi]
- 0000020D  89 45 FC			mov		curVal, eax
+ 00000269			L1:			; LOOP: for all numbers in the array
+ 00000269  8B 06			mov		eax, [esi]
+ 0000026B  89 45 FC			mov		curVal, eax
 
 					; Check if negative
- 00000210  A9 00000000			test	eax, 0
- 00000215  79 11			jns		isPos
+ 0000026E  A9 00000000			test	eax, 0
+ 00000273  79 11			jns		isPos
 
 					; Two's Complement
- 00000217  33 C0			xor		eax, eax
- 00000219  83 C0 01			add		eax, 1
+ 00000275  33 C0			xor		eax, eax
+ 00000277  83 C0 01			add		eax, 1
 
 					; Add a minus sign
- 0000021C  8B D8			mov		ebx, eax
- 0000021E  33 C0			xor		eax, eax
- 00000220  B0 2D			mov		al, 45
- 00000222  AA				stosb
+ 0000027A  8B D8			mov		ebx, eax
+ 0000027C  33 C0			xor		eax, eax
+ 0000027E  B0 2D			mov		al, 45
+ 00000280  AA				stosb
 
- 00000223  8B C3			mov		eax, ebx
- 00000225  89 45 FC			mov		curVal, eax
+ 00000281  8B C3			mov		eax, ebx
+ 00000283  89 45 FC			mov		curVal, eax
 
- 00000228			isPos:		; Just a positive number
+ 00000286			isPos:		; Just a positive number
 					; Setup
- 00000228  BB 0000000A			mov		ebx, 10
- 0000022D  83 F8 0A			cmp		eax, 10
- 00000230  7E 25			jle		OneDigit
+ 00000286  BB 0000000A			mov		ebx, 10
+ 0000028B  83 F8 0A			cmp		eax, 10
+ 0000028E  7E 25			jle		OneDigit
 
- 00000232			L2:			; Divide by 10
- 00000232  99				cdq
- 00000233  F7 F3			div		ebx
- 00000235  83 F8 0A			cmp		eax, 10
- 00000238  7C 10			jl		Accum
+ 00000290			L2:			; Divide by 10
+ 00000290  99				cdq
+ 00000291  F7 F3			div		ebx
+ 00000293  83 F8 0A			cmp		eax, 10
+ 00000296  7C 10			jl		Accum
 
 					; If the quotient is larger than 10,
 					;	then go in multiples of 10 until less than 10
- 0000023A  8B C3			mov		eax, ebx
- 0000023C  BB 0000000A			mov		ebx, 10
- 00000241  F7 E3			mul		ebx
- 00000243  8B D8			mov		ebx, eax
- 00000245  8B 45 FC			mov		eax, curVal
- 00000248  EB E8			jmp		L2
+ 00000298  8B C3			mov		eax, ebx
+ 0000029A  BB 0000000A			mov		ebx, 10
+ 0000029F  F7 E3			mul		ebx
+ 000002A1  8B D8			mov		ebx, eax
+ 000002A3  8B 45 FC			mov		eax, curVal
+ 000002A6  EB E8			jmp		L2
 
- 0000024A			Accum:		; Store the ASCII value
- 0000024A  04 30			add		al, 48
- 0000024C  AA				stosb
+ 000002A8			Accum:		; Store the ASCII value
+ 000002A8  04 30			add		al, 48
+ 000002AA  AA				stosb
 
 					; move the remainder
- 0000024D  8B C2			mov		eax, edx
- 0000024F  89 45 FC			mov		curVal, eax
+ 000002AB  8B C2			mov		eax, edx
+ 000002AD  89 45 FC			mov		curVal, eax
 
 					; If it is more than 10 then we continue
- 00000252  83 F8 0A			cmp		eax, 10
- 00000255  7D D1			jge		isPos
+ 000002B0  83 F8 0A			cmp		eax, 10
+ 000002B3  7D D1			jge		isPos
 
 					; Only the one's place is left
- 00000257			OneDigit:
- 00000257  04 30			add		al, 48
- 00000259  AA				stosb
+ 000002B5			OneDigit:
+ 000002B5  04 30			add		al, 48
+ 000002B7  AA				stosb
 
 					; Write the value out
- 0000025A  8B 7D 10			mov		edi, [ebp + 16]
+ 000002B8  8B 7D 10			mov		edi, [ebp + 16]
 					displayString edi
- 0000025D  52		     1		push	edx
- 0000025E  8B D7	     1		mov		edx, edi
- 00000260  E8 00000000 E     1		call	WriteString
- 00000265  5A		     1		pop		edx
+ 000002BB  52		     1		push	edx
+ 000002BC  8B D7	     1		mov		edx, edi
+ 000002BE  E8 00000000 E     1		call	WriteString
+ 000002C3  5A		     1		pop		edx
 
- 00000266  8B 55 14			mov		edx, [ebp + 20]
- 00000269  E8 00000000 E		call	WriteString
+ 000002C4  8B 55 14			mov		edx, [ebp + 20]
+ 000002C7  E8 00000000 E		call	WriteString
 
 					; Got to the next value in the array
- 0000026E  83 C6 04			add		esi, 4
- 00000271  E2 98			loop	L1
+ 000002CC  83 C6 04			add		esi, 4
+ 000002CF  E2 98			loop	L1
 
- 00000273  C9		   *	    leave  
- 00000274  C2 0010			ret		16
- 00000277			WriteVal ENDP
+ 000002D1  C9		   *	    leave  
+ 000002D2  C2 0010			ret		16
+ 000002D5			WriteVal ENDP
 
 				;--------------------------------------
- 00000277			Sum PROC
-				LOCAL	curVal:DWORD
+ 000002D5			Sum PROC
 				; Sum the numbers and display the sum.
 				; Preconditions: The input array address and length must be on the stack.
 				; Postconditions: Stack is clean
 				; Stack State:
-				;	curVal		ebp-4
 				;	old ebp		ebp
 				;	ret @		ebp+4
 				;	input @		ebp+8
@@ -609,105 +693,45 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
 				; Returns: None
 				;--------------------------------------
 
- 00000277  55		   *	    push   ebp
- 00000278  8B EC	   *	    mov    ebp, esp
- 0000027A  83 C4 FC	   *	    add    esp, 0FFFFFFFCh
- 0000027D  33 C0			xor		eax, eax
+ 000002D5  55				push	ebp
+ 000002D6  8B EC			mov		ebp, esp
 
- 0000027F  8B 4D 0C			mov		ecx, [ebp + 12]
- 00000282  8B 75 08			mov		esi, [ebp + 8]
- 00000285  8B 7D 10			mov		edi, [ebp + 16]
+ 000002D8  33 C0			xor		eax, eax
 
- 00000288			L1:			; Sum all the numbers
- 00000288  8B 1E			mov		ebx, [esi]
- 0000028A  03 C3			add		eax, ebx
- 0000028C  83 C6 04			add		esi, 4
- 0000028F  E2 F7			loop	L1
+ 000002DA  8B 4D 0C			mov		ecx, [ebp + 12]
+ 000002DD  8B 75 08			mov		esi, [ebp + 8]
+ 000002E0  8B 7D 10			mov		edi, [ebp + 16]
 
-					; Prepare to display
- 00000291  89 45 FC			mov		curVal, eax
- 00000294  89 07			mov		[edi], eax
- 00000296  8B F7			mov		esi, edi
- 00000298  8B 7D 14			mov		edi, [ebp + 20]
+ 000002E3			L1:			; Sum all the numbers
+ 000002E3  8B 1E			mov		ebx, [esi]
+ 000002E5  03 C3			add		eax, ebx
+ 000002E7  83 C6 04			add		esi, 4
+ 000002EA  E2 F7			loop	L1
 
- 0000029B  FC				cld
+ 000002EC  89 07			mov		[edi], eax
 
-					; Check if negative
- 0000029C  A9 00000000			test	eax, 0
- 000002A1  79 11			jns		isPos
+ 000002EE  8B 7D 14			mov		edi, [ebp + 20]
 
-					; Two's Complement
- 000002A3  33 C0			xor		eax, eax
- 000002A5  83 C0 01			add		eax, 1
-
-					; Add a minus sign
- 000002A8  8B D8			mov		ebx, eax
- 000002AA  33 C0			xor		eax, eax
- 000002AC  B0 2D			mov		al, 45
- 000002AE  AA				stosb
-
- 000002AF  8B C3			mov		eax, ebx
- 000002B1  89 45 FC			mov		curVal, eax
-
- 000002B4			isPos:		; Just a positive number
-					; Setup
- 000002B4  BB 0000000A			mov		ebx, 10
- 000002B9  83 F8 0A			cmp		eax, 10
- 000002BC  7E 25			jle		OneDigit
-
- 000002BE			L2:			; Divide by 10
- 000002BE  99				cdq
- 000002BF  F7 F3			div		ebx
- 000002C1  83 F8 0A			cmp		eax, 10
- 000002C4  7C 10			jl		Accum
-
-					; If the quotient is larger than 10,
-					;	then go in multiples of 10 until less than 10
- 000002C6  8B C3			mov		eax, ebx
- 000002C8  BB 0000000A			mov		ebx, 10
- 000002CD  F7 E3			mul		ebx
- 000002CF  8B D8			mov		ebx, eax
- 000002D1  8B 45 FC			mov		eax, curVal
- 000002D4  EB E8			jmp		L2
-
- 000002D6			Accum:		; Store the ASCII value
- 000002D6  04 30			add		al, 48
- 000002D8  AA				stosb
-
-					; move the remainder
- 000002D9  8B C2			mov		eax, edx
- 000002DB  89 45 FC			mov		curVal, eax
-
-					; If it is more than 10 then we continue
- 000002DE  83 F8 0A			cmp		eax, 10
- 000002E1  7D D1			jge		isPos
-
-					; Only the one's place is left
- 000002E3			OneDigit:
- 000002E3  04 30			add		al, 48
- 000002E5  AA				stosb
-
-					; Write the value out
- 000002E6  8B 7D 14			mov		edi, [ebp + 20]
+ 000002F1  57				push	edi
+ 000002F2  50				push	eax
+ 000002F3  E8 FFFFFEFC			call	ConvertIntToStr
 
 					displayString edi
- 000002E9  52		     1		push	edx
- 000002EA  8B D7	     1		mov		edx, edi
- 000002EC  E8 00000000 E     1		call	WriteString
- 000002F1  5A		     1		pop		edx
+ 000002F8  52		     1		push	edx
+ 000002F9  8B D7	     1		mov		edx, edi
+ 000002FB  E8 00000000 E     1		call	WriteString
+ 00000300  5A		     1		pop		edx
 
- 000002F2  C9		   *	    leave  
- 000002F3  C2 0010			ret		16
- 000002F6			Sum ENDP
+ 00000301  5D				pop		ebp
+ 00000302  C2 0010			ret		16
+ 00000305			Sum ENDP
 
 				;--------------------------------------
- 000002F6			Avg PROC
-				LOCAL	curVal:DWORD
+ 00000305			Avg PROC
 				; Display the sum.
 				; Preconditions: The sum and the array length must be on the stack.
 				; Postconditions: Stack is clean
 				; Stack State:
-				;	curVal		ebp-4
 				;	old ebp		ebp
 				;	ret @		ebp+4
 				;	input len	ebp+8
@@ -717,94 +741,35 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
 				; Returns: None
 				;--------------------------------------
 
- 000002F6  55		   *	    push   ebp
- 000002F7  8B EC	   *	    mov    ebp, esp
- 000002F9  83 C4 FC	   *	    add    esp, 0FFFFFFFCh
- 000002FC  33 C0			xor		eax, eax
+ 00000305  55				push	ebp
+ 00000306  8B EC			mov		ebp, esp
+ 00000308  33 C0			xor		eax, eax
+
 					; Grab the sum and the array length and divide
- 000002FE  8B 5D 08			mov		ebx, [ebp + 8]
- 00000301  8B 45 0C			mov		eax, [ebp + 12]
+ 0000030A  8B 5D 08			mov		ebx, [ebp + 8]
+ 0000030D  8B 45 0C			mov		eax, [ebp + 12]
 
- 00000304  99				cdq
- 00000305  F7 F3			div		ebx
+ 00000310  99				cdq
+ 00000311  F7 F3			div		ebx
 
-					; Prepare the print out
- 00000307  FC				cld
- 00000308  8B 7D 10			mov		edi, [ebp + 16]
- 0000030B  33 DB			xor		ebx, ebx
+ 00000313  8B 7D 10			mov		edi, [ebp + 16]
 
- 0000030D  89 45 FC			mov		curVal, eax
-
-					; Check if negative
- 00000310  A9 00000000			test	eax, 0
- 00000315  79 11			jns		isPos
-
-					; Two's Complement
- 00000317  33 C0			xor		eax, eax
- 00000319  83 C0 01			add		eax, 1
-
-					; Add a minus sign
- 0000031C  8B D8			mov		ebx, eax
- 0000031E  33 C0			xor		eax, eax
- 00000320  B0 2D			mov		al, 45
- 00000322  AA				stosb
-
- 00000323  8B C3			mov		eax, ebx
- 00000325  89 45 FC			mov		curVal, eax
-
- 00000328			isPos:		; Just a positive number
-					; Setup
- 00000328  BB 0000000A			mov		ebx, 10
- 0000032D  83 F8 0A			cmp		eax, 10
- 00000330  7E 25			jle		OneDigit
-
- 00000332			L2:			; Divide by 10
- 00000332  99				cdq
- 00000333  F7 F3			div		ebx
- 00000335  83 F8 0A			cmp		eax, 10
- 00000338  7C 10			jl		Accum
-
-					; If the quotient is larger than 10,
-					;	then go in multiples of 10 until less than 10
- 0000033A  8B C3			mov		eax, ebx
- 0000033C  BB 0000000A			mov		ebx, 10
- 00000341  F7 E3			mul		ebx
- 00000343  8B D8			mov		ebx, eax
- 00000345  8B 45 FC			mov		eax, curVal
- 00000348  EB E8			jmp		L2
-
- 0000034A			Accum:		; Store the ASCII value
- 0000034A  04 30			add		al, 48
- 0000034C  AA				stosb
-
-					; move the remainder
- 0000034D  8B C2			mov		eax, edx
- 0000034F  89 45 FC			mov		curVal, eax
-
-					; If it is more than 10 then we continue
- 00000352  83 F8 0A			cmp		eax, 10
- 00000355  7D D1			jge		isPos
-
-					; Only the one's place is left
- 00000357			OneDigit:
- 00000357  04 30			add		al, 48
- 00000359  AA				stosb
-
-					; Write the value out
- 0000035A  89 07			mov		[edi], eax
+ 00000316  57				push	edi
+ 00000317  50				push	eax
+ 00000318  E8 FFFFFED7			call	ConvertIntToStr
 
 					displayString edi
- 0000035C  52		     1		push	edx
- 0000035D  8B D7	     1		mov		edx, edi
- 0000035F  E8 00000000 E     1		call	WriteString
- 00000364  5A		     1		pop		edx
+ 0000031D  52		     1		push	edx
+ 0000031E  8B D7	     1		mov		edx, edi
+ 00000320  E8 00000000 E     1		call	WriteString
+ 00000325  5A		     1		pop		edx
 
- 00000365  C9		   *	    leave  
- 00000366  C2 000C			ret		12
- 00000369			Avg ENDP
+ 00000326  5D				pop		ebp
+ 00000327  C2 000C			ret		12
+ 0000032A			Avg ENDP
 
 				END main
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/02/20 21:20:26
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 13:56:43
 -Portfolio Project     (program6_leflangj.asm		     Symbols 2 - 1
 
 
@@ -907,22 +872,23 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 000002A5 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000369 Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000032A Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
-Avg  . . . . . . . . . . . . . .	P Near	 000002F6 _TEXT	Length= 00000073 Public STDCALL
-  curVal . . . . . . . . . . . .	DWord	 bp - 00000004
-  isPos  . . . . . . . . . . . .	L Near	 00000328 _TEXT	
-  L2 . . . . . . . . . . . . . .	L Near	 00000332 _TEXT	
-  Accum  . . . . . . . . . . . .	L Near	 0000034A _TEXT	
-  OneDigit . . . . . . . . . . .	L Near	 00000357 _TEXT	
+Avg  . . . . . . . . . . . . . .	P Near	 00000305 _TEXT	Length= 00000025 Public STDCALL
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ConvertIntToStr  . . . . . . . .	P Near	 000001F4 _TEXT	Length= 0000005E Public STDCALL
+  curVal . . . . . . . . . . . .	DWord	 bp - 00000004
+  isPos  . . . . . . . . . . . .	L Near	 0000021C _TEXT	
+  L2 . . . . . . . . . . . . . .	L Near	 00000226 _TEXT	
+  Accum  . . . . . . . . . . . .	L Near	 0000023E _TEXT	
+  OneDigit . . . . . . . . . . .	L Near	 0000024B _TEXT	
 CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -1015,13 +981,8 @@ Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-Sum  . . . . . . . . . . . . . .	P Near	 00000277 _TEXT	Length= 0000007F Public STDCALL
-  curVal . . . . . . . . . . . .	DWord	 bp - 00000004
-  L1 . . . . . . . . . . . . . .	L Near	 00000288 _TEXT	
-  isPos  . . . . . . . . . . . .	L Near	 000002B4 _TEXT	
-  L2 . . . . . . . . . . . . . .	L Near	 000002BE _TEXT	
-  Accum  . . . . . . . . . . . .	L Near	 000002D6 _TEXT	
-  OneDigit . . . . . . . . . . .	L Near	 000002E3 _TEXT	
+Sum  . . . . . . . . . . . . . .	P Near	 000002D5 _TEXT	Length= 00000030 Public STDCALL
+  L1 . . . . . . . . . . . . . .	L Near	 000002E3 _TEXT	
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -1040,13 +1001,13 @@ WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-WriteVal . . . . . . . . . . . .	P Near	 000001F4 _TEXT	Length= 00000083 Public STDCALL
+WriteVal . . . . . . . . . . . .	P Near	 00000252 _TEXT	Length= 00000083 Public STDCALL
   curVal . . . . . . . . . . . .	DWord	 bp - 00000004
-  L1 . . . . . . . . . . . . . .	L Near	 0000020B _TEXT	
-  isPos  . . . . . . . . . . . .	L Near	 00000228 _TEXT	
-  L2 . . . . . . . . . . . . . .	L Near	 00000232 _TEXT	
-  Accum  . . . . . . . . . . . .	L Near	 0000024A _TEXT	
-  OneDigit . . . . . . . . . . .	L Near	 00000257 _TEXT	
+  L1 . . . . . . . . . . . . . .	L Near	 00000269 _TEXT	
+  isPos  . . . . . . . . . . . .	L Near	 00000286 _TEXT	
+  L2 . . . . . . . . . . . . . .	L Near	 00000290 _TEXT	
+  Accum  . . . . . . . . . . . .	L Near	 000002A8 _TEXT	
+  OneDigit . . . . . . . . . . .	L Near	 000002B5 _TEXT	
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000DF Public STDCALL
 printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
