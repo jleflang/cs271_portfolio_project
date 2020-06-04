@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 -Portfolio Project     (program6_leflangj.asm		     Page 1 - 1
 
 
@@ -499,7 +499,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
 				;	int			ebp+8
 				;	buffer @	ebp+12
 				;	caller stk	ebp+16...
-				; Registers changed:
+				; Registers changed: eax, ebx, edi
 				; Returns: Converted string in the buffer.
 				;--------------------------------------
 
@@ -576,7 +576,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
  00000258			WriteVal PROC
 				; Output the user input using the displayString macro.
 				; Preconditions: The input array address and length must be on the stack.
-				; Postconditions: Stack is clean
+				; Postconditions: Stack+buffer is clean
 				; Stack State:
 				;	old ebp		ebp
 				;	ret @		ebp+4
@@ -637,7 +637,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
  00000299			Sum PROC
 				; Sum the numbers and display the sum.
 				; Preconditions: The input array address and length must be on the stack.
-				; Postconditions: Stack is clean
+				; Postconditions: Stack+buffer is clean
 				; Stack State:
 				;	old ebp		ebp
 				;	ret @		ebp+4
@@ -698,7 +698,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
  000002DB			Avg PROC
 				; Display the sum.
 				; Preconditions: The sum and the array length must be on the stack.
-				; Postconditions: Stack is clean
+				; Postconditions: Stack+buffer is clean
 				; Stack State:
 				;	old ebp		ebp
 				;	ret @		ebp+4
@@ -749,7 +749,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
  00000312			Avg ENDP
 
 				END main
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 14:54:52
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 -Portfolio Project     (program6_leflangj.asm		     Symbols 2 - 1
 
 

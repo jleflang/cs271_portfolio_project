@@ -351,7 +351,7 @@ LOCAL	curVal:DWORD
 ;	int			ebp+8
 ;	buffer @	ebp+12
 ;	caller stk	ebp+16...
-; Registers changed:
+; Registers changed: eax, ebx, edi
 ; Returns: Converted string in the buffer.
 ;--------------------------------------
 
@@ -424,7 +424,7 @@ ConvertIntToStr ENDP
 WriteVal PROC
 ; Output the user input using the displayString macro.
 ; Preconditions: The input array address and length must be on the stack.
-; Postconditions: Stack is clean
+; Postconditions: Stack+buffer is clean
 ; Stack State:
 ;	old ebp		ebp
 ;	ret @		ebp+4
@@ -481,7 +481,7 @@ WriteVal ENDP
 Sum PROC
 ; Sum the numbers and display the sum.
 ; Preconditions: The input array address and length must be on the stack.
-; Postconditions: Stack is clean
+; Postconditions: Stack+buffer is clean
 ; Stack State:
 ;	old ebp		ebp
 ;	ret @		ebp+4
@@ -538,7 +538,7 @@ Sum ENDP
 Avg PROC
 ; Display the sum.
 ; Preconditions: The sum and the array length must be on the stack.
-; Postconditions: Stack is clean
+; Postconditions: Stack+buffer is clean
 ; Stack State:
 ;	old ebp		ebp
 ;	ret @		ebp+4
