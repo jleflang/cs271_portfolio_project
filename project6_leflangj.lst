@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/05/20 10:21:46
 -Portfolio Project     (program6_leflangj.asm		     Page 1 - 1
 
 
@@ -244,7 +244,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
  0000006F  68 0000002C R		push	OFFSET buffer
  00000074  6A 0A			push	ARRAYSIZE
  00000076  68 00000000 R		push	OFFSET user_input
- 0000007B  E8 000001D8			call	WriteVal
+ 0000007B  E8 000001D8			call	ArrayOut
 
  00000080  E8 00000000 E		call	CrLf
  00000085  E8 00000000 E		call	CrLf
@@ -487,7 +487,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
  000001FA			ReadVal ENDP
 
 				;--------------------------------------
- 000001FA			ConvertIntToStr PROC
+ 000001FA			WriteVal PROC
 				LOCAL	curVal:DWORD
 				; Subprocedure to convert signed integers to strings.
 				; Preconditions: The buffer addr and the integer is on the stack.
@@ -570,10 +570,10 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 
  00000254  C9		   *	    leave  
  00000255  C2 0008			ret		8
- 00000258			ConvertIntToStr ENDP
+ 00000258			WriteVal ENDP
 
 				;--------------------------------------
- 00000258			WriteVal PROC
+ 00000258			ArrayOut PROC
 				; Output the user input using the displayString macro.
 				; Preconditions: The input array address and length must be on the stack.
 				; Postconditions: Stack+buffer is clean
@@ -602,7 +602,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 					
  00000266  57				push	edi
  00000267  50				push	eax
- 00000268  E8 FFFFFF8D			call	ConvertIntToStr
+ 00000268  E8 FFFFFF8D			call	WriteVal
 
 					; Write the value out
  0000026D  8B 7D 10			mov		edi, [ebp + 16]
@@ -631,7 +631,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 
  00000295  5D				pop		ebp
  00000296  C2 0014			ret		20
- 00000299			WriteVal ENDP
+ 00000299			ArrayOut ENDP
 
 				;--------------------------------------
  00000299			Sum PROC
@@ -671,7 +671,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 
  000002B5  57				push	edi
  000002B6  50				push	eax
- 000002B7  E8 FFFFFF3E			call	ConvertIntToStr
+ 000002B7  E8 FFFFFF3E			call	WriteVal
 
  000002BC  8B 7D 14			mov		edi, [ebp + 20]
 					displayString edi
@@ -725,7 +725,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
 
  000002EC  57				push	edi
  000002ED  50				push	eax
- 000002EE  E8 FFFFFF07			call	ConvertIntToStr
+ 000002EE  E8 FFFFFF07			call	WriteVal
 
  000002F3  8B 7D 10			mov		edi, [ebp + 16]
 					displayString edi
@@ -749,7 +749,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
  00000312			Avg ENDP
 
 				END main
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/04/20 15:03:08
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/05/20 10:21:46
 -Portfolio Project     (program6_leflangj.asm		     Symbols 2 - 1
 
 
@@ -859,17 +859,14 @@ Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
+ArrayOut . . . . . . . . . . . .	P Near	 00000258 _TEXT	Length= 00000041 Public STDCALL
+  L1 . . . . . . . . . . . . . .	L Near	 00000261 _TEXT	
+  Clear  . . . . . . . . . . . .	L Near	 00000286 _TEXT	
 Avg  . . . . . . . . . . . . . .	P Near	 000002DB _TEXT	Length= 00000037 Public STDCALL
   Clear  . . . . . . . . . . . .	L Near	 00000304 _TEXT	
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-ConvertIntToStr  . . . . . . . .	P Near	 000001FA _TEXT	Length= 0000005E Public STDCALL
-  curVal . . . . . . . . . . . .	DWord	 bp - 00000004
-  isPos  . . . . . . . . . . . .	L Near	 00000222 _TEXT	
-  L2 . . . . . . . . . . . . . .	L Near	 0000022C _TEXT	
-  Accum  . . . . . . . . . . . .	L Near	 00000244 _TEXT	
-  OneDigit . . . . . . . . . . .	L Near	 00000251 _TEXT	
 CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -983,9 +980,12 @@ WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-WriteVal . . . . . . . . . . . .	P Near	 00000258 _TEXT	Length= 00000041 Public STDCALL
-  L1 . . . . . . . . . . . . . .	L Near	 00000261 _TEXT	
-  Clear  . . . . . . . . . . . .	L Near	 00000286 _TEXT	
+WriteVal . . . . . . . . . . . .	P Near	 000001FA _TEXT	Length= 0000005E Public STDCALL
+  curVal . . . . . . . . . . . .	DWord	 bp - 00000004
+  isPos  . . . . . . . . . . . .	L Near	 00000222 _TEXT	
+  L2 . . . . . . . . . . . . . .	L Near	 0000022C _TEXT	
+  Accum  . . . . . . . . . . . .	L Near	 00000244 _TEXT	
+  OneDigit . . . . . . . . . . .	L Near	 00000251 _TEXT	
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000E5 Public STDCALL
 printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C

@@ -114,7 +114,7 @@ main PROC
 	push	OFFSET buffer
 	push	ARRAYSIZE
 	push	OFFSET user_input
-	call	WriteVal
+	call	ArrayOut
 
 	call	CrLf
 	call	CrLf
@@ -339,7 +339,7 @@ L2:	mov		BYTE PTR [edi], 0
 ReadVal ENDP
 
 ;--------------------------------------
-ConvertIntToStr PROC
+WriteVal PROC
 LOCAL	curVal:DWORD
 ; Subprocedure to convert signed integers to strings.
 ; Preconditions: The buffer addr and the integer is on the stack.
@@ -418,10 +418,10 @@ OneDigit:
 	stosb
 
 	ret		8
-ConvertIntToStr ENDP
+WriteVal ENDP
 
 ;--------------------------------------
-WriteVal PROC
+ArrayOut PROC
 ; Output the user input using the displayString macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack+buffer is clean
@@ -450,7 +450,7 @@ L1:			; LOOP: for all numbers in the array
 	
 	push	edi
 	push	eax
-	call	ConvertIntToStr
+	call	WriteVal
 
 	; Write the value out
 	mov		edi, [ebp + 16]
@@ -475,7 +475,7 @@ Clear:
 
 	pop		ebp
 	ret		20
-WriteVal ENDP
+ArrayOut ENDP
 
 ;--------------------------------------
 Sum PROC
@@ -515,7 +515,7 @@ L1:			; Sum all the numbers
 
 	push	edi
 	push	eax
-	call	ConvertIntToStr
+	call	WriteVal
 
 	mov		edi, [ebp + 20]
 	displayString edi
@@ -565,7 +565,7 @@ Avg PROC
 
 	push	edi
 	push	eax
-	call	ConvertIntToStr
+	call	WriteVal
 
 	mov		edi, [ebp + 16]
 	displayString edi
