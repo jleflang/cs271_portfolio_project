@@ -95,6 +95,7 @@ main PROC
 
 	call	CrLf
 
+	push	OFFSET program_retry
 	push	LENGTHOF buffer
 	push	OFFSET input_size
 	push	OFFSET buffer
@@ -102,7 +103,7 @@ main PROC
 	push	OFFSET program_prompt
 	push	SIZEOF user_input
 	push	OFFSET user_input
-	call	ReadVal
+	call	ArrayFill
 
 	call	CrLf
 
@@ -185,38 +186,34 @@ Instruct ENDP
 
 ;--------------------------------------
 ReadVal PROC
-LOCAL signFlag:BYTE
+LOCAL	curVal:DWORD, signFlag:BYTE
 ; Read and validate the user input using getString macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean and buffer+input_size are sanitized.
 ; Stack State:
-;	signFlag	ebp-4
+;	signFlag	ebp-8
+;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
-;	input @		ebp+8
-;	input size	ebp+12
+;	buffer @	ebp+8
+;	buffer len	ebp+12
 ;	prompt		ebp+16
 ;	error		ebp+20
-;	buffer @	ebp+24
-;	input_size	ebp+28
-;	buffer len	ebp+32
+;	input size	ebp+24
+;	retry		ebp+28
+;	old proc	ebp+32...
 ; Registers changed: eax, ebx, ecx, esi, edi
-; Returns: None
+; Returns: Value in eax
 ;--------------------------------------
 
-	mov		esi, [ebp + 24]
-	mov		edi, [ebp + 8]
 	mov		signFlag, 0
+	mov		curVal, 0
+	mov		esi, [ebp + 8]
+	mov		ebx, [ebp + 16]
 
 Input:
-	; Check if we are finished
-	mov		eax, [ebp + 12]
-	add		eax, [ebp + 8]
-	cmp		edi, eax
-	jge		Finish
-
 	; Get the user input
-	getString esi, [ebp + 32], [ebp + 28], [ebp + 16]
+	getString esi, [ebp + 12], [ebp + 24], ebx
 
 	; Setup to process the input
 	xor		eax, eax
@@ -226,7 +223,7 @@ Input:
 	; Prepare the loop
 	cld
 	mov		ebx, 1
-	mov		ecx, [ebp + 28]
+	mov		ecx, [ebp + 24]
 	sub		ecx, 1
 	cmp		ecx, 0
 	jz		L1
@@ -241,7 +238,7 @@ Mut:
 	loop	Mut
 
 	mov		ebx, eax
-	mov		ecx, [ebp + 28]
+	mov		ecx, [ebp + 24]
 
 	xor		eax, eax
 
@@ -251,7 +248,7 @@ L1:			; LOOP: For each char in the string
 
 	; End at the null
 	cmp		al, 0
-	je		Next
+	je		Finish
 
 	; if there is a plus sign, still valid but need go to next
 	cmp		al, 43
@@ -264,7 +261,6 @@ L1:			; LOOP: For each char in the string
 	mov		signFlag, 1
 
 	; Two's Complement
-	mov		eax, [edi]
 	xor		eax, 0
 	add		eax, 1
 	jmp		L1
@@ -279,8 +275,9 @@ Cont:		; Check to make sure the input is an integer value
 	; Store it
 	sub		al, 48
 	mul		ebx
-	mov		edx, [edi]
+	mov		edx, curVal
 	add		eax, edx
+	mov		curVal, eax
 
 	cmp		signFlag, 1
 	je		isNegative
@@ -294,8 +291,6 @@ isNegative:
 	jo		Inval
 
 Val:
-	mov		[edi], eax
-
 	xor		edx, edx
 
 	; Divide by 10
@@ -304,22 +299,77 @@ Val:
 	cdq
 	div		ebx
 	mov		ebx, eax
-
-	xor		eax, eax
-
-	; loop until the current input is transfered
-	loop	L1
-
-Next:		; Go to the next number in the array
-	mov		esi, [ebp + 24]
-	add		edi, 4
-	jmp		Input
+	jmp		Finish
 
 Inval:		; Invalid input
 	mov		edx, [ebp + 20]
 	call	WriteString
 
-	call	CrLf
+	mov		ebx, [ebp + 28]
+	mov		curVal, 0
+	mov		signFlag, 0
+
+	jmp		Input
+
+Finish:
+	; loop until the current input is transfered
+	dec		ecx
+	cmp		ecx, 0
+	jg		L1
+
+	mov		eax, curVal
+
+	ret		24
+ReadVal ENDP
+
+;--------------------------------------
+ArrayFill PROC
+;LOCAL signFlag:BYTE
+; Read and validate the user input using getString macro.
+; Preconditions: The input array address and length must be on the stack.
+; Postconditions: Stack is clean and buffer+input_size are sanitized.
+; Stack State:
+;	signFlag	ebp-4
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input @		ebp+8
+;	input size	ebp+12
+;	prompt		ebp+16
+;	error		ebp+20
+;	buffer @	ebp+24
+;	input_size	ebp+28
+;	buffer len	ebp+32
+;	retry		ebp+36
+; Registers changed: eax, ebx, ecx, esi, edi
+; Returns: None
+;--------------------------------------
+
+	push	ebp
+	mov		ebp, esp
+
+	mov		esi, [ebp + 24]
+	mov		edi, [ebp + 8]
+
+Input:
+	; Check if we are finished
+	mov		eax, [ebp + 12]
+	add		eax, [ebp + 8]
+	cmp		edi, eax
+	jge		Finish
+
+	push	[ebp + 36]
+	push	[ebp + 28]
+	push	[ebp + 20]
+	push	[ebp + 16]
+	push	[ebp + 32]
+	push	esi
+	call	ReadVal
+
+	mov		[edi], eax
+
+Next:		; Go to the next number in the array
+	mov		esi, [ebp + 24]
+	add		edi, 4
 	jmp		Input
 
 Finish:
@@ -335,8 +385,9 @@ L2:	mov		BYTE PTR [edi], 0
 	mov		esi, [ebp + 28]
 	mov		esi, 0
 
-	ret		28
-ReadVal ENDP
+	pop		ebp
+	ret		32
+ArrayFill ENDP
 
 ;--------------------------------------
 WriteVal PROC
