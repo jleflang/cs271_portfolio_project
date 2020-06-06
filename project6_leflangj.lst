@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:43:17
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:52:39
 -Portfolio Project     (program6_leflangj.asm		     Page 1 - 1
 
 
@@ -320,7 +320,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:43:17
  0000010C			ReadVal PROC
 				LOCAL	curVal:DWORD, signFlag:BYTE
 				; Read and validate the user input using getString macro.
-				; Preconditions: The input array address and length must be on the stack.
+				; Preconditions: The buffer addr+len and prompts must be on the stack.
 				; Postconditions: Stack is clean and buffer+input_size are sanitized.
 				; Stack State:
 				;	signFlag	ebp-8
@@ -474,12 +474,11 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:43:17
 
 				;--------------------------------------
  000001E6			ArrayFill PROC
-				;LOCAL signFlag:BYTE
-				; Read and validate the user input using getString macro.
-				; Preconditions: The input array address and length must be on the stack.
+				; Fill the user input array via ReadVal.
+				; Preconditions: The input array addr+len, all user prompts,
+				;	and the buffer parameters must be on the stack.
 				; Postconditions: Stack is clean and buffer+input_size are sanitized.
 				; Stack State:
-				;	signFlag	ebp-4
 				;	old ebp		ebp
 				;	ret @		ebp+4
 				;	input @		ebp+8
@@ -802,7 +801,7 @@ Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:43:17
  0000034A			Avg ENDP
 
 				END main
-Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:43:17
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/06/20 16:52:39
 -Portfolio Project     (program6_leflangj.asm		     Symbols 2 - 1
 
 

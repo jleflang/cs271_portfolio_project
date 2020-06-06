@@ -188,7 +188,7 @@ Instruct ENDP
 ReadVal PROC
 LOCAL	curVal:DWORD, signFlag:BYTE
 ; Read and validate the user input using getString macro.
-; Preconditions: The input array address and length must be on the stack.
+; Preconditions: The buffer addr+len and prompts must be on the stack.
 ; Postconditions: Stack is clean and buffer+input_size are sanitized.
 ; Stack State:
 ;	signFlag	ebp-8
@@ -324,12 +324,11 @@ ReadVal ENDP
 
 ;--------------------------------------
 ArrayFill PROC
-;LOCAL signFlag:BYTE
-; Read and validate the user input using getString macro.
-; Preconditions: The input array address and length must be on the stack.
+; Fill the user input array via ReadVal.
+; Preconditions: The input array addr+len, all user prompts,
+;	and the buffer parameters must be on the stack.
 ; Postconditions: Stack is clean and buffer+input_size are sanitized.
 ; Stack State:
-;	signFlag	ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	input @		ebp+8
