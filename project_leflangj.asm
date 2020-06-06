@@ -95,6 +95,7 @@ main PROC
 
 	call	CrLf
 
+	push	OFFSET program_retry
 	push	LENGTHOF buffer
 	push	OFFSET input_size
 	push	OFFSET buffer
@@ -199,7 +200,8 @@ LOCAL	curVal:DWORD, signFlag:BYTE
 ;	prompt		ebp+16
 ;	error		ebp+20
 ;	input size	ebp+24
-;	old proc	ebp+28...
+;	retry		ebp+28
+;	old proc	ebp+32...
 ; Registers changed: eax, ebx, ecx, esi, edi
 ; Returns: Value in eax
 ;--------------------------------------
@@ -207,10 +209,11 @@ LOCAL	curVal:DWORD, signFlag:BYTE
 	mov		signFlag, 0
 	mov		curVal, 0
 	mov		esi, [ebp + 8]
+	mov		ebx, [ebp + 16]
 
 Input:
 	; Get the user input
-	getString esi, [ebp + 12], [ebp + 24], [ebp + 16]
+	getString esi, [ebp + 12], [ebp + 24], ebx
 
 	; Setup to process the input
 	xor		eax, eax
@@ -302,7 +305,10 @@ Inval:		; Invalid input
 	mov		edx, [ebp + 20]
 	call	WriteString
 
-	call	CrLf
+	mov		ebx, [ebp + 28]
+	mov		curVal, 0
+	mov		signFlag, 0
+
 	jmp		Input
 
 Finish:
@@ -313,7 +319,7 @@ Finish:
 
 	mov		eax, curVal
 
-	ret		20
+	ret		24
 ReadVal ENDP
 
 ;--------------------------------------
@@ -333,6 +339,7 @@ ArrayFill PROC
 ;	buffer @	ebp+24
 ;	input_size	ebp+28
 ;	buffer len	ebp+32
+;	retry		ebp+36
 ; Registers changed: eax, ebx, ecx, esi, edi
 ; Returns: None
 ;--------------------------------------
@@ -355,6 +362,7 @@ Input:
 	mov		ebx, [ebp + 20]
 	mov		eax, [ebp + 28]
 
+	push	[ebp + 36]
 	push	eax
 	push	ebx
 	push	edx
@@ -383,7 +391,7 @@ L2:	mov		BYTE PTR [edi], 0
 	mov		esi, 0
 
 	pop		ebp
-	ret		28
+	ret		32
 ArrayFill ENDP
 
 ;--------------------------------------
