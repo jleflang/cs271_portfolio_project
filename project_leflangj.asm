@@ -185,12 +185,13 @@ Instruct ENDP
 
 ;--------------------------------------
 ReadVal PROC
-LOCAL	signFlag:BYTE
+LOCAL	curVal:DWORD, signFlag:BYTE
 ; Read and validate the user input using getString macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean and buffer+input_size are sanitized.
 ; Stack State:
-;	signFlag	ebp-4
+;	signFlag	ebp-8
+;	curVal		ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
 ;	buffer @	ebp+8
@@ -204,6 +205,7 @@ LOCAL	signFlag:BYTE
 ;--------------------------------------
 
 	mov		signFlag, 0
+	mov		curVal, 0
 	mov		esi, [ebp + 8]
 
 Input:
@@ -233,7 +235,7 @@ Mut:
 	loop	Mut
 
 	mov		ebx, eax
-	mov		ecx, [ebp + 8]
+	mov		ecx, [ebp + 24]
 
 	xor		eax, eax
 
@@ -256,7 +258,6 @@ L1:			; LOOP: For each char in the string
 	mov		signFlag, 1
 
 	; Two's Complement
-	mov		eax, [edi]
 	xor		eax, 0
 	add		eax, 1
 	jmp		L1
@@ -271,8 +272,9 @@ Cont:		; Check to make sure the input is an integer value
 	; Store it
 	sub		al, 48
 	mul		ebx
-	mov		edx, [edi]
+	mov		edx, curVal
 	add		eax, edx
+	mov		curVal, eax
 
 	cmp		signFlag, 1
 	je		isNegative
@@ -305,7 +307,11 @@ Inval:		; Invalid input
 
 Finish:
 	; loop until the current input is transfered
-	loop	L1
+	dec		ecx
+	cmp		ecx, 0
+	jg		L1
+
+	mov		eax, curVal
 
 	ret		20
 ReadVal ENDP
