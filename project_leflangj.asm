@@ -357,16 +357,11 @@ Input:
 	cmp		edi, eax
 	jge		Finish
 
-	mov		ecx, [ebp + 32]
-	mov		edx, [ebp + 16]
-	mov		ebx, [ebp + 20]
-	mov		eax, [ebp + 28]
-
 	push	[ebp + 36]
-	push	eax
-	push	ebx
-	push	edx
-	push	ecx
+	push	[ebp + 28]
+	push	[ebp + 20]
+	push	[ebp + 16]
+	push	[ebp + 32]
 	push	esi
 	call	ReadVal
 
