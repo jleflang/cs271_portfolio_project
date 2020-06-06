@@ -102,7 +102,7 @@ main PROC
 	push	OFFSET program_prompt
 	push	SIZEOF user_input
 	push	OFFSET user_input
-	call	ReadVal
+	call	ArrayFill
 
 	call	CrLf
 
@@ -185,7 +185,7 @@ Instruct ENDP
 
 ;--------------------------------------
 ReadVal PROC
-LOCAL signFlag:BYTE
+LOCAL	signFlag:BYTE
 ; Read and validate the user input using getString macro.
 ; Preconditions: The input array address and length must be on the stack.
 ; Postconditions: Stack is clean and buffer+input_size are sanitized.
@@ -193,30 +193,22 @@ LOCAL signFlag:BYTE
 ;	signFlag	ebp-4
 ;	old ebp		ebp
 ;	ret @		ebp+4
-;	input @		ebp+8
-;	input size	ebp+12
+;	buffer @	ebp+8
+;	buffer len	ebp+12
 ;	prompt		ebp+16
 ;	error		ebp+20
-;	buffer @	ebp+24
-;	input_size	ebp+28
-;	buffer len	ebp+32
+;	input size	ebp+24
+;	old proc	ebp+28...
 ; Registers changed: eax, ebx, ecx, esi, edi
-; Returns: None
+; Returns: Value in eax
 ;--------------------------------------
 
-	mov		esi, [ebp + 24]
-	mov		edi, [ebp + 8]
 	mov		signFlag, 0
+	mov		esi, [ebp + 8]
 
 Input:
-	; Check if we are finished
-	mov		eax, [ebp + 12]
-	add		eax, [ebp + 8]
-	cmp		edi, eax
-	jge		Finish
-
 	; Get the user input
-	getString esi, [ebp + 32], [ebp + 28], [ebp + 16]
+	getString esi, [ebp + 12], [ebp + 24], [ebp + 16]
 
 	; Setup to process the input
 	xor		eax, eax
@@ -226,7 +218,7 @@ Input:
 	; Prepare the loop
 	cld
 	mov		ebx, 1
-	mov		ecx, [ebp + 28]
+	mov		ecx, [ebp + 24]
 	sub		ecx, 1
 	cmp		ecx, 0
 	jz		L1
@@ -241,7 +233,7 @@ Mut:
 	loop	Mut
 
 	mov		ebx, eax
-	mov		ecx, [ebp + 28]
+	mov		ecx, [ebp + 8]
 
 	xor		eax, eax
 
@@ -251,7 +243,7 @@ L1:			; LOOP: For each char in the string
 
 	; End at the null
 	cmp		al, 0
-	je		Next
+	je		Finish
 
 	; if there is a plus sign, still valid but need go to next
 	cmp		al, 43
@@ -294,8 +286,6 @@ isNegative:
 	jo		Inval
 
 Val:
-	mov		[edi], eax
-
 	xor		edx, edx
 
 	; Divide by 10
@@ -304,22 +294,73 @@ Val:
 	cdq
 	div		ebx
 	mov		ebx, eax
-
-	xor		eax, eax
-
-	; loop until the current input is transfered
-	loop	L1
-
-Next:		; Go to the next number in the array
-	mov		esi, [ebp + 24]
-	add		edi, 4
-	jmp		Input
+	jmp		Finish
 
 Inval:		; Invalid input
 	mov		edx, [ebp + 20]
 	call	WriteString
 
 	call	CrLf
+	jmp		Input
+
+Finish:
+	; loop until the current input is transfered
+	loop	L1
+
+	ret		20
+ReadVal ENDP
+
+;--------------------------------------
+ArrayFill PROC
+;LOCAL signFlag:BYTE
+; Read and validate the user input using getString macro.
+; Preconditions: The input array address and length must be on the stack.
+; Postconditions: Stack is clean and buffer+input_size are sanitized.
+; Stack State:
+;	signFlag	ebp-4
+;	old ebp		ebp
+;	ret @		ebp+4
+;	input @		ebp+8
+;	input size	ebp+12
+;	prompt		ebp+16
+;	error		ebp+20
+;	buffer @	ebp+24
+;	input_size	ebp+28
+;	buffer len	ebp+32
+; Registers changed: eax, ebx, ecx, esi, edi
+; Returns: None
+;--------------------------------------
+
+	push	ebp
+	mov		ebp, esp
+
+	mov		esi, [ebp + 24]
+	mov		edi, [ebp + 8]
+
+Input:
+	; Check if we are finished
+	mov		eax, [ebp + 12]
+	add		eax, [ebp + 8]
+	cmp		edi, eax
+	jge		Finish
+
+	mov		ecx, [ebp + 32]
+	mov		edx, [ebp + 16]
+	mov		ebx, [ebp + 20]
+	mov		eax, [ebp + 28]
+
+	push	eax
+	push	ebx
+	push	edx
+	push	ecx
+	push	esi
+	call	ReadVal
+
+	mov		[edi], eax
+
+Next:		; Go to the next number in the array
+	mov		esi, [ebp + 24]
+	add		edi, 4
 	jmp		Input
 
 Finish:
@@ -335,8 +376,9 @@ L2:	mov		BYTE PTR [edi], 0
 	mov		esi, [ebp + 28]
 	mov		esi, 0
 
+	pop		ebp
 	ret		28
-ReadVal ENDP
+ArrayFill ENDP
 
 ;--------------------------------------
 WriteVal PROC
