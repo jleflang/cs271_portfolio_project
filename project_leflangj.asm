@@ -1,7 +1,7 @@
 TITLE Portfolio Project     (program6_leflangj.asm)
 
 ; Author: James Leflang
-; Last Modified: 05/30/2020
+; Last Modified: 06/06/2020
 ; OSU email address: leflangj@oregonstate.edu
 ; Course number/section: CS-271-400
 ; Project Number: 6               Due Date: 06/07/2020
@@ -228,12 +228,13 @@ Input:
 	cmp		ecx, 0
 	jz		L1
 
+	; The input should be of a certain length
 	cmp		ecx, 11
 	jg		Inval
 
 	mov		ebx, 10
 
-Mut:
+Mut:		; Set the multiplier
 	mul		ebx
 	loop	Mut
 
@@ -272,7 +273,7 @@ Cont:		; Check to make sure the input is an integer value
 	cmp		al, 57
 	jg		Inval
 
-	; Store it
+	; Store the value
 	sub		al, 48
 	mul		ebx
 	mov		edx, curVal
@@ -467,6 +468,10 @@ OneDigit:
 	add		al, 48
 	stosb
 
+	; Display the value
+	mov		edi, [ebp + 12]
+	displayString edi
+
 	ret		8
 WriteVal ENDP
 
@@ -501,10 +506,6 @@ L1:			; LOOP: for all numbers in the array
 	push	edi
 	push	eax
 	call	WriteVal
-
-	; Write the value out
-	mov		edi, [ebp + 16]
-	displayString edi
 
 	mov		edx, [ebp + 20]
 	call	WriteString
@@ -559,17 +560,18 @@ L1:			; Sum all the numbers
 	add		esi, 4
 	loop	L1
 
+	; Store value for later
 	mov		[edi], eax
 
+	; Recall the buffer
 	mov		edi, [ebp + 20]
 
+	; Write the sum
 	push	edi
 	push	eax
 	call	WriteVal
 
-	mov		edi, [ebp + 20]
-	displayString edi
-
+	; Sanitize the buffer
 	mov		edx, [ebp + 24]
 	add		edx, edi
 
@@ -604,22 +606,21 @@ Avg PROC
 	mov		ebp, esp
 	xor		eax, eax
 
-	; Grab the sum and the array length and divide
+	; Grab the sum and the array length and divide for the avg
 	mov		ebx, [ebp + 8]
 	mov		eax, [ebp + 12]
 
 	cdq
 	div		ebx
 
+	; Recall the buffer
 	mov		edi, [ebp + 16]
 
 	push	edi
 	push	eax
 	call	WriteVal
 
-	mov		edi, [ebp + 16]
-	displayString edi
-
+	; Sanitize the buffer
 	mov		edx, [ebp + 20]
 	add		edx, edi
 
